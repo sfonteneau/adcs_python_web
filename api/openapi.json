@@ -1,0 +1,2336 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "ADCS Web Console — API JSON",
+    "version": "1.1.0",
+    "description": "API JSON qui importe le projet ADCS existant (`AdcsTool`), sans modifier son code. Authentification par jeton de session Bearer opaque. La spécification et Swagger UI sont publiques, les opérations ADCS sont protégées. Opérations d’écriture soumises à `confirm: true` (sauf `dry_run: true` pour prévisualisation). Ne jamais utiliser avec une CA de production sans validation préalable."
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "Origine actuelle (reverse proxy ou API directe)"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Service",
+      "description": "Santé et fonctions disponibles"
+    },
+    {
+      "name": "Authentification",
+      "description": "Gestion des sessions"
+    },
+    {
+      "name": "Autorités (CA)",
+      "description": "Liste, configuration, création de CA et KET"
+    },
+    {
+      "name": "Certificats",
+      "description": "Inventaire, téléchargement, émission, révocation, rotation et CSR"
+    },
+    {
+      "name": "CRL",
+      "description": "Signature de CRL"
+    },
+    {
+      "name": "Configuration",
+      "description": "Consultation expurgée"
+    },
+    {
+      "name": "Documentation",
+      "description": "OpenAPI et Swagger UI"
+    }
+  ],
+  "security": [
+    {
+      "BearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "État de santé de l’API",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Health"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "security": []
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Créer une session",
+        "operationId": "login",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LoginSession"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                },
+                "example": {
+                  "data": {
+                    "access_token": "<jeton-de-session>",
+                    "token_type": "Bearer",
+                    "expires_in": 3600,
+                    "username": "admin"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "429": {
+            "description": "Trop de tentatives de connexion.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              },
+              "example": {
+                "username": "admin",
+                "password": "Votre mot de passe"
+              }
+            }
+          }
+        },
+        "description": "Le jeton de session est opaque (non JWT). Dans Swagger : appeler cette route, copier data.access_token, puis cliquer sur Authorize et coller le jeton SANS le préfixe Bearer.",
+        "security": []
+      }
+    },
+    "/api/v1/auth/me": {
+      "get": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Vérifier la session courante",
+        "operationId": "me",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SessionInfo"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentification"
+        ],
+        "summary": "Révoquer la session courante",
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/LogoutResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/capabilities": {
+      "get": {
+        "tags": [
+          "Service"
+        ],
+        "summary": "Fonctionnalités disponibles",
+        "operationId": "capabilities",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Capabilities"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/api/v1/cas": {
+      "get": {
+        "tags": [
+          "Autorités (CA)"
+        ],
+        "summary": "Lister les autorités de certification",
+        "operationId": "listCAs",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CA"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Autorités (CA)"
+        ],
+        "summary": "Créer une autorité de certification",
+        "operationId": "createCA",
+        "responses": {
+          "201": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/GenericResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CARegister"
+              },
+              "example": {
+                "cn": "Intermediate CA",
+                "aia_crl_base_url": "http://pki.example.org",
+                "confirm": true
+              }
+            }
+          }
+        },
+        "description": "Écriture de la configuration ADCS et création du matériel CA. Protéger cette action."
+      }
+    },
+    "/api/v1/cas/{ca_id}": {
+      "get": {
+        "tags": [
+          "Autorités (CA)"
+        ],
+        "summary": "Voir la configuration publique d’une CA",
+        "operationId": "showCA",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CAMetadata"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "description": "Les secrets sont masqués par la couche API."
+      }
+    },
+    "/api/v1/cas/{ca_id}/certificates": {
+      "get": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Rechercher et filtrer les certificats",
+        "operationId": "listCertificates",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CertificateList"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "État de validité",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "any",
+                "expired",
+                "expiring",
+                "valid"
+              ],
+              "default": "any"
+            }
+          },
+          {
+            "name": "revocation",
+            "in": "query",
+            "description": "État de révocation",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "any",
+                "revoked",
+                "not_revoked"
+              ],
+              "default": "any"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "description": "Chaîne de recherche",
+            "schema": {
+              "type": "string",
+              "maxLength": 256,
+              "default": ""
+            }
+          },
+          {
+            "name": "order_by",
+            "in": "query",
+            "description": "Champ et sens du tri",
+            "schema": {
+              "type": "string",
+              "example": "not_after ASC",
+              "maxLength": 200,
+              "default": "not_after ASC"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "0 = tous les résultats (maximum 50000).",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50000
+            }
+          }
+        ],
+        "description": "Les paramètres ne peuvent pas être répétés."
+      },
+      "post": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Émettre un certificat",
+        "operationId": "issueCertificate",
+        "responses": {
+          "201": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/GenericResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertIssueRequest"
+              },
+              "example": {
+                "cn": "www.example.org",
+                "sans": [
+                  "www.example.org"
+                ],
+                "confirm": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cas/{ca_id}/certificates/{serial}": {
+      "get": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Détails d’un certificat",
+        "operationId": "showCertificate",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CertificateDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "serial",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Numéro de série hexadécimal, avec préfixe 0x optionnel.",
+              "example": "0A",
+              "pattern": "^(?:0[xX])?[0-9a-fA-F]{1,128}$"
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/cas/{ca_id}/certificates/{serial}/content": {
+      "get": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Récupérer le certificat public",
+        "operationId": "downloadCertificate",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CertificateContent"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                },
+                "example": {
+                  "data": {
+                    "serial": "A",
+                    "format": "pem",
+                    "encoding": "utf-8",
+                    "filename": "A.crt.pem",
+                    "mime_type": "application/x-pem-file",
+                    "content": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          },
+          "409": {
+            "description": "Fichier incohérent avec le numéro de série demandé.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "serial",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Numéro de série hexadécimal, avec préfixe 0x optionnel.",
+              "example": "0A",
+              "pattern": "^(?:0[xX])?[0-9a-fA-F]{1,128}$"
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "description": "pem : certificat PEM seul ; der : Base64 DER ; fullchain : chaîne PEM.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pem",
+                "der",
+                "fullchain"
+              ],
+              "default": "pem"
+            }
+          }
+        ],
+        "description": "Le fichier n’est jamais transmis en binaire brut : la réponse contient data.content en texte PEM ou Base64 DER. Aucune clé privée."
+      }
+    },
+    "/api/v1/cas/{ca_id}/certificates/actions/{action}": {
+      "post": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Révoquer, annuler une révocation ou supprimer (en lot)",
+        "operationId": "batchAction",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CertificateActionResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "action",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "example": "revoke",
+              "enum": [
+                "revoke",
+                "unrevoke",
+                "delete"
+              ]
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CertificateActionRequest"
+              },
+              "example": {
+                "serials": [
+                  "01AB",
+                  "02CD",
+                  "03EF"
+                ],
+                "confirm": true
+              }
+            }
+          }
+        },
+        "description": "Exactement une sélection: `serials` OU `filter`. `dry_run=true` pour prévisualiser sans confirmer. Pour revoke/unrevoke, le lot est traité par un seul appel à `AdcsTool` (mise à jour de CRL unique). `delete` par numéro traite individuellement les fichiers. `next_update_hours` interdit pour delete. Les filtres `eligible` ne sont valables que pour delete."
+      }
+    },
+    "/api/v1/cas/{ca_id}/crl/resign": {
+      "post": {
+        "tags": [
+          "CRL"
+        ],
+        "summary": "Re-signer la CRL d’une CA",
+        "operationId": "resignCRL",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CrlResignResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrlResignRequest"
+              },
+              "example": {
+                "bump_number": true,
+                "confirm": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/crls/resign-all": {
+      "post": {
+        "tags": [
+          "CRL"
+        ],
+        "summary": "Re-signer les CRL de toutes les CA",
+        "operationId": "resignAllCRLs",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/GenericResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CrlResignRequest"
+              },
+              "example": {
+                "bump_number": true,
+                "confirm": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cas/{ca_id}/ket": {
+      "post": {
+        "tags": [
+          "Autorités (CA)"
+        ],
+        "summary": "Créer ou remplacer le KET/CAExchange d’une CA",
+        "operationId": "createKET",
+        "responses": {
+          "201": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/GenericResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/KetCreateRequest"
+              },
+              "example": {
+                "cn": "ma-ca-Xchg",
+                "confirm": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cas/{ca_id}/certificates/rotate": {
+      "post": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Effectuer une rotation de certificat si nécessaire",
+        "operationId": "rotateCertificate",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/GenericResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RotateRequest"
+              },
+              "example": {
+                "crt_path": "/var/lib/adcs/pki/certs/site.crt.pem",
+                "key_path": "/var/lib/adcs/pki/private/site.key.pem",
+                "confirm": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cas/{ca_id}/csr": {
+      "post": {
+        "tags": [
+          "Certificats"
+        ],
+        "summary": "Soumettre une CSR",
+        "operationId": "submitCSR",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/GenericResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "parameters": [
+          {
+            "name": "ca_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "Corps JSON",
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CSRSubmitRequest"
+              },
+              "example": {
+                "csr_base64": "LS0tLS1CRUdJTi...",
+                "template_name": "WebServer",
+                "confirm": true
+              }
+            }
+          }
+        },
+        "description": "CSR PEM/DER encodée Base64. L’identité utilisée par adcs_tool est celle de la session API; un username client arbitraire n’est jamais accepté."
+      }
+    },
+    "/api/v1/callbacks": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Lister les callbacks publics",
+        "operationId": "listCallbacks",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/GenericResult"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "description": "Secrets retirés récursivement par la couche API."
+      }
+    },
+    "/api/v1/config": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "summary": "Afficher la configuration expurgée",
+        "operationId": "showConfig",
+        "responses": {
+          "200": {
+            "description": "Opération réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ConfigResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        },
+        "description": "Lecture seule, secrets filtrés : mots de passe, jetons, PIN, clés privées, credentials d’URL. La configuration brute n’est jamais transmise."
+      }
+    },
+    "/api/openapi.json": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "Spécification OpenAPI 3",
+        "operationId": "openApiSpec",
+        "responses": {
+          "200": {
+            "description": "Document OpenAPI 3.0.3",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          }
+        },
+        "description": "Document public sans secret ni configuration sensible. Aucun jeton requis pour le consulter.",
+        "security": []
+      }
+    },
+    "/api/docs": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "Swagger UI interactive",
+        "operationId": "swaggerUI",
+        "responses": {
+          "200": {
+            "description": "Page Swagger UI statique",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "description": "Cette URL sert uniquement la documentation HTML/JS. Les opérations ADCS restent soumises au Bearer.",
+        "security": []
+      }
+    },
+    "/api/docs/loader.js": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "Script de démarrage de Swagger UI",
+        "operationId": "swaggerLoader",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "JavaScript statique",
+            "content": {
+              "application/javascript": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docs/style.css": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "Feuille de style de la page Swagger",
+        "operationId": "swaggerStyle",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "CSS statique",
+            "content": {
+              "text/css": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/docs/assets/{filename}": {
+      "get": {
+        "tags": [
+          "Documentation"
+        ],
+        "summary": "Ressources Swagger UI locales optionnelles",
+        "operationId": "swaggerAsset",
+        "security": [],
+        "description": "Si les fichiers ne sont pas vendorizés, renvoie 404. Le navigateur tente alors le CDN épinglé (pour la production, installer les fichiers localement).",
+        "parameters": [
+          {
+            "name": "filename",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "swagger-ui.css",
+                "swagger-ui-bundle.js"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSS ou JavaScript statique (Content-Type selon fichier)"
+          },
+          "404": {
+            "$ref": "#/components/responses/BadRequest"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "opaque",
+        "description": "Copier la valeur data.access_token de POST /api/v1/auth/login, sans ajouter « Bearer ». Le jeton est une session opaque, pas un JWT."
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string",
+            "example": "invalid_request"
+          },
+          "message": {
+            "type": "string",
+            "example": "Invalid serial"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/Error"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string",
+            "example": "admin",
+            "maxLength": 100
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 4096,
+            "format": "password"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "LoginSession": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "Jeton de session opaque aléatoire, PAS un JWT."
+          },
+          "token_type": {
+            "type": "string",
+            "example": "Bearer",
+            "enum": [
+              "Bearer"
+            ]
+          },
+          "expires_in": {
+            "type": "integer",
+            "minimum": 300,
+            "maximum": 86400,
+            "example": 3600
+          },
+          "username": {
+            "type": "string",
+            "example": "admin"
+          }
+        },
+        "required": [
+          "access_token",
+          "token_type",
+          "expires_in",
+          "username"
+        ],
+        "additionalProperties": false
+      },
+      "SessionInfo": {
+        "type": "object",
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "expires_at": {
+            "type": "integer",
+            "description": "Unix timestamp de fin de session."
+          }
+        },
+        "required": [
+          "username",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "LogoutResult": {
+        "type": "object",
+        "properties": {
+          "logged_out": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "logged_out"
+        ],
+        "additionalProperties": false
+      },
+      "Capabilities": {
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "max_serials_per_action": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "api_version",
+          "features",
+          "max_serials_per_action"
+        ],
+        "additionalProperties": false
+      },
+      "CA": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "ma-ca"
+          },
+          "display_name": {
+            "type": "string",
+            "example": "Ma CA"
+          },
+          "parent": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "parent"
+        ],
+        "additionalProperties": true
+      },
+      "CAMetadata": {
+        "type": "object",
+        "description": "Configuration publique de la CA, expurgée des secrets.",
+        "additionalProperties": true
+      },
+      "GenericResult": {
+        "type": "object",
+        "description": "Résultat retourné par AdcsTool; sa structure dépend de l’opération.",
+        "additionalProperties": true
+      },
+      "ConfigResult": {
+        "type": "object",
+        "description": "Configuration publique, filtrée pour ne pas exposer mots de passe, PIN, jetons, clés privées.",
+        "additionalProperties": true
+      },
+      "CertificateList": {
+        "type": "object",
+        "properties": {
+          "ca": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "shown": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "certificates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serial": {
+                  "type": "string",
+                  "example": "0A"
+                },
+                "subject": {
+                  "type": "string",
+                  "example": "CN=example.org"
+                },
+                "not_before": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "not_after": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "days_to_expiry": {
+                  "type": "integer"
+                },
+                "revoked": {
+                  "type": "boolean"
+                },
+                "is_ca": {
+                  "type": "boolean"
+                },
+                "filename": {
+                  "type": "string"
+                },
+                "relative_path": {
+                  "type": "string"
+                },
+                "sha256": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "serial",
+                "subject",
+                "revoked"
+              ],
+              "additionalProperties": true
+            }
+          }
+        },
+        "required": [
+          "ca",
+          "total",
+          "shown",
+          "certificates"
+        ],
+        "additionalProperties": true
+      },
+      "CertificateDetail": {
+        "type": "object",
+        "description": "Métadonnées X.509 et extensions retournées par adcs_tool.",
+        "additionalProperties": true
+      },
+      "CertificateContent": {
+        "type": "object",
+        "properties": {
+          "serial": {
+            "type": "string",
+            "example": "A"
+          },
+          "format": {
+            "type": "string",
+            "example": "pem",
+            "enum": [
+              "pem",
+              "der",
+              "fullchain"
+            ]
+          },
+          "encoding": {
+            "type": "string",
+            "example": "utf-8",
+            "enum": [
+              "utf-8",
+              "base64"
+            ]
+          },
+          "filename": {
+            "type": "string",
+            "example": "A.crt.pem"
+          },
+          "mime_type": {
+            "type": "string",
+            "example": "application/x-pem-file"
+          },
+          "content": {
+            "type": "string",
+            "description": "PEM UTF-8, ou Base64 des octets DER. Aucun contenu de clé privée.",
+            "example": "-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n"
+          }
+        },
+        "required": [
+          "serial",
+          "format",
+          "encoding",
+          "filename",
+          "mime_type",
+          "content"
+        ],
+        "additionalProperties": true
+      },
+      "CARegister": {
+        "type": "object",
+        "properties": {
+          "cn": {
+            "type": "string",
+            "example": "Intermediate CA",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "aia_crl_base_url": {
+            "type": "string",
+            "description": "URL de publication de la CRL ; la méthode ADCS refuse https://.",
+            "example": "http://pki.example.org/",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "signer_ca_id": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "csr_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "crt_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "key_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "crl_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "rsa_bits": {
+            "type": "integer",
+            "minimum": 2048,
+            "maximum": 16384,
+            "default": 4096
+          },
+          "key_type": {
+            "type": "string",
+            "enum": [
+              "rsa",
+              "ec",
+              "ecc",
+              "ecdsa",
+              "mldsa",
+              "ml-dsa",
+              "mldsa44",
+              "mldsa65",
+              "mldsa87",
+              "ml-dsa-44",
+              "ml-dsa-65",
+              "ml-dsa-87"
+            ],
+            "default": "rsa"
+          },
+          "ec_curve": {
+            "type": "string",
+            "default": "secp256r1"
+          },
+          "mldsa_variant": {
+            "type": "string",
+            "default": "mldsa65"
+          },
+          "valid_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365000,
+            "default": 3650
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true pour créer la CA.",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "cn",
+          "aia_crl_base_url",
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "CertIssueRequest": {
+        "type": "object",
+        "properties": {
+          "cn": {
+            "type": "string",
+            "example": "www.example.org",
+            "minLength": 1,
+            "maxLength": 255
+          },
+          "sans": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 255
+            },
+            "maxItems": 100,
+            "description": "Noms DNS/IP selon support ADCS."
+          },
+          "crt_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "key_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "rsa_bits": {
+            "type": "integer",
+            "minimum": 2048,
+            "maximum": 16384,
+            "default": 3072
+          },
+          "valid_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365000,
+            "default": 365
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true pour créer le certificat.",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "cn",
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateFilter": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "any",
+              "expired",
+              "expiring",
+              "valid"
+            ],
+            "default": "any"
+          },
+          "revocation": {
+            "type": "string",
+            "enum": [
+              "any",
+              "revoked",
+              "not_revoked"
+            ],
+            "default": "any"
+          },
+          "search": {
+            "type": "string",
+            "maxLength": 256,
+            "default": ""
+          },
+          "order_by": {
+            "type": "string",
+            "description": "Tri : champ ASC ou DESC. Maximum 8 champs séparés par des virgules.",
+            "example": "not_after ASC",
+            "maxLength": 200,
+            "default": "not_after ASC"
+          },
+          "limit": {
+            "type": "integer",
+            "description": "0 = sans limite.",
+            "minimum": 0,
+            "maximum": 50000,
+            "default": 0
+          },
+          "eligible": {
+            "type": "boolean",
+            "description": "Réservé à la suppression; ne pas combiner avec les filtres status/revocation.",
+            "default": false
+          }
+        },
+        "description": "Critères utilisés à la place de serials.",
+        "additionalProperties": false
+      },
+      "CertificateActionRequest": {
+        "type": "object",
+        "properties": {
+          "serials": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "description": "Numéro de série hexadécimal, avec préfixe 0x optionnel.",
+              "example": "0A",
+              "pattern": "^(?:0[xX])?[0-9a-fA-F]{1,128}$"
+            },
+            "maxItems": 5000,
+            "minItems": 1
+          },
+          "filter": {
+            "$ref": "#/components/schemas/CertificateFilter"
+          },
+          "dry_run": {
+            "type": "boolean",
+            "description": "true : prévisualisation, aucune modification.",
+            "default": false
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true sauf si dry_run=true.",
+            "default": false
+          },
+          "next_update_hours": {
+            "type": "integer",
+            "description": "Disponible uniquement pour revoke/unrevoke, pas delete.",
+            "minimum": 1,
+            "maximum": 8760
+          }
+        },
+        "description": "Fournir exactement un de serials ou filter. Un lot de serials = un seul appel ADCS et une seule réécriture de CRL pour la révocation.",
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": [
+              "serials"
+            ],
+            "not": {
+              "required": [
+                "filter"
+              ]
+            }
+          },
+          {
+            "required": [
+              "filter"
+            ],
+            "not": {
+              "required": [
+                "serials"
+              ]
+            }
+          }
+        ]
+      },
+      "CrlResignRequest": {
+        "type": "object",
+        "properties": {
+          "bump_number": {
+            "type": "boolean",
+            "default": true
+          },
+          "next_update_hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8760
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "KetCreateRequest": {
+        "type": "object",
+        "properties": {
+          "cn": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "crt_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "key_path": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "rsa_bits": {
+            "type": "integer",
+            "minimum": 2048,
+            "maximum": 16384,
+            "default": 4096
+          },
+          "valid_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365000,
+            "default": 3650
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "RotateRequest": {
+        "type": "object",
+        "properties": {
+          "crt_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "key_path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2048
+          },
+          "threshold_days": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 365000,
+            "default": 30
+          },
+          "valid_days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365000,
+            "default": 365
+          },
+          "write_fullchain_to_crt": {
+            "type": "boolean",
+            "default": true
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "crt_path",
+          "key_path",
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "CSRSubmitRequest": {
+        "type": "object",
+        "properties": {
+          "csr_base64": {
+            "type": "string",
+            "description": "CSR PEM/DER encodée Base64. Décodée, taille entre 1 et 1 000 000 octets.",
+            "minLength": 1,
+            "maxLength": 1500000,
+            "format": "byte"
+          },
+          "template_oid": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "template_name": {
+            "type": "string",
+            "maxLength": 255
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "OBLIGATOIRE: true",
+            "enum": [
+              true
+            ]
+          }
+        },
+        "required": [
+          "csr_base64",
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
+      "CertificateActionResult": {
+        "type": "object",
+        "description": "Compte-rendu de révocation, annulation ou suppression. Un certificat unique peut avoir une réponse simplifiée avec serial et revoked.",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "revoke",
+              "unrevoke",
+              "delete"
+            ]
+          },
+          "ca": {
+            "type": "string"
+          },
+          "serial": {
+            "type": "string"
+          },
+          "dry_run": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selected": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "successes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "failures": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked": {
+            "type": "boolean"
+          },
+          "current_revoked": {
+            "type": "boolean"
+          },
+          "planned_revoked": {
+            "type": "boolean"
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serial": {
+                  "type": "string"
+                },
+                "subject": {
+                  "type": "string"
+                },
+                "not_after": {
+                  "type": "string"
+                },
+                "revoked": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serial": {
+                  "type": "string"
+                },
+                "error": {
+                  "type": "string"
+                }
+              },
+              "additionalProperties": true
+            }
+          },
+          "results": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": true,
+        "example": {
+          "action": "revoke",
+          "ca": "ma-ca",
+          "dry_run": false,
+          "total": 2,
+          "selected": 2,
+          "successes": 2,
+          "failures": 0,
+          "candidates": [
+            {
+              "serial": "0A",
+              "subject": "CN=server1",
+              "revoked": false
+            },
+            {
+              "serial": "0B",
+              "subject": "CN=server2",
+              "revoked": false
+            }
+          ],
+          "errors": []
+        }
+      },
+      "CrlResignResult": {
+        "type": "object",
+        "properties": {
+          "ca": {
+            "type": "string"
+          },
+          "crl_number": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "revoked_count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "ca",
+          "crl_number",
+          "revoked_count"
+        ],
+        "additionalProperties": true,
+        "example": {
+          "ca": "ma-ca",
+          "crl_number": 52,
+          "revoked_count": 42
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Erreur de validation/paramètres.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Jeton Bearer manquant, invalide ou expiré.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "error": {
+                "code": "unauthorized",
+                "message": "Bearer token required"
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "Origine refusée ou accès au stockage interdit.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Erreur interne côté API.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  }
+}

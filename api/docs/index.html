@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Swagger UI — ADCS Web Console</title>
+  <link rel="stylesheet" href="/api/docs/style.css">
+  <script src="/api/docs/loader.js" defer></script>
+</head>
+<body>
+  <header class="banner">
+    <div><strong>ADCS / API</strong><span>Documentation Swagger UI — OpenAPI 3</span></div>
+    <a href="/api/openapi.json" target="_blank" rel="noopener noreferrer">View OpenAPI JSON ↗</a>
+  </header>
+  <section class="auth-help" aria-label="Authentification">
+    <b>Authentification :</b> lancez <code>POST /api/v1/auth/login</code> dans Swagger, copiez
+    <code>data.access_token</code>, cliquez sur <strong>Authorize</strong>, collez le jeton
+    <strong>without the "Bearer" prefix</strong> and confirm. The token is not a JWT and is not retained after reload.
+    All ADCS operations remain protected.
+  </section>
+  <p id="loading" role="status">Loading Swagger UI…</p>
+  <p id="error" role="alert" hidden></p>
+  <div id="swagger-ui"></div>
+</body>
+</html>

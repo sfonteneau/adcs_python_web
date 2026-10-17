@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark light">
+  <meta name="description" content="ADCS certificate, authority and CRL management demo">
+  <title>ADCS Console</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body data-theme="light">
+  <main id="loginView" class="login-view">
+    <section class="login-card" aria-labelledby="loginTitle">
+      <p class="eyebrow">ADCS / TEXTUAL WEB</p>
+      <h1 id="loginTitle">Connexion</h1>
+      <p class="muted login-description">Connect to the ADCS API to manage certificates and CRLs.</p>
+      <form id="loginForm" class="form-stack">
+        <label for="loginServer">ADCS server URL</label>
+        <input id="loginServer" name="server" type="url" required spellcheck="false" autocomplete="url" placeholder="https://pki.exemple.fr/api/v1" aria-describedby="serverHint">
+        <p id="serverHint" class="server-hint">Full JSON API URL.</p>
+        <label for="loginUser">Username</label>
+        <input id="loginUser" name="username" required autocomplete="username" maxlength="100" autofocus placeholder="admin">
+        <label for="loginPassword">Password</label>
+        <input id="loginPassword" name="password" type="password" required autocomplete="current-password" placeholder="Password">
+        <p id="loginError" class="form-error" role="alert" hidden></p>
+        <button id="loginButton" class="btn btn-primary login-submit" type="submit">Sign in</button>
+      </form>
+      <div class="login-bottom">
+        <span class="status-dot" id="loginDot"></span>
+        <span id="loginConnection">Connecting to API…</span>
+        <span class="login-version">v1</span>
+      </div>
+    </section>
+  </main>
+
+  <div id="appView" class="app-layout" hidden>
+    <aside id="sidebar" class="sidebar" aria-label="Navigation et filtres">
+      <div class="sidebar-brand">
+        <div>
+          <strong>ADCS Console</strong>
+          <small>Gestion PKI</small>
+        </div>
+        <button id="closeSidebar" class="icon-button sidebar-close" type="button" aria-label="Close navigation">✕</button>
+      </div>
+
+      <div class="sidebar-scroll">
+        <section class="sidebar-section">
+          <h2 class="section-title">Authority</h2>
+          <label class="form-label" for="caSelect">Active CA</label>
+          <select id="caSelect" class="full-width"><option value="">Loading…</option></select>
+          <div class="stack-sm" hidden>
+            <button id="caDetailsButton" class="btn btn-ghost full-width" type="button">Configuration de la CA</button>
+            <button id="configButton" class="btn btn-ghost full-width" type="button">Configuration globale</button>
+          </div>
+        </section>
+
+        <section class="sidebar-section">
+          <h2 class="section-title">Search</h2>
+          <label class="form-label" for="searchInput">Search certificates</label>
+          <input id="searchInput" type="search" placeholder="CN, serial, fingerprint…" autocomplete="off" spellcheck="false">
+          <div class="filter-grid">
+            <div>
+              <label class="form-label" for="statusFilter">Expiration</label>
+              <select id="statusFilter">
+                <option value="any">All</option>
+                <option value="valid">Valid (&gt; 30 days)</option>
+                <option value="expiring">Expiring within 30 days</option>
+                <option value="expired">Expired</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="revocationFilter">Revocation</label>
+              <select id="revocationFilter">
+                <option value="any">All</option>
+                <option value="revoked">Revoked</option>
+                <option value="not_revoked">Not revoked</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="form-label" for="maxRows">Row limit</label>
+            <input type="number" id="maxRows" value="1000" min="0" max="50000" step="1">
+          </div>
+          <button id="resetFilters" class="btn btn-ghost full-width" type="button">Clear filters</button>
+        </section>
+
+        <section class="sidebar-section">
+          <h2 class="section-title">Actions</h2>
+          <div class="stack-sm action-stack">
+            <button id="newCertButton" type="button" class="btn btn-primary full-width">New certificate (Ctrl+N)</button>
+            <button id="revokeButton" type="button" class="btn btn-secondary full-width">Revoke (R)</button>
+            <button id="unrevokeButton" type="button" class="btn btn-secondary full-width">Undo revocation (U)</button>
+            <button id="deleteButton" type="button" class="btn btn-secondary full-width">Delete (Del)</button>
+            <button id="resignButton" type="button" class="btn btn-secondary full-width">Re-sign CRL (Ctrl+R)</button>
+          </div>
+        </section>
+
+        <section class="sidebar-section tools-section" hidden>
+          <h2 class="section-title">Tools</h2>
+          <label class="form-label" for="advancedSelect">Additional tool</label>
+          <select id="advancedSelect" class="full-width">
+            <option value="create-ca">Create a CA</option>
+            <option value="create-ket">Create KET / CAExchange</option>
+            <option value="rotate">Renew a certificate</option>
+            <option value="csr">Soumettre une CSR</option>
+            <option value="resign-all">Re-sign all CRLs</option>
+            <option value="callbacks">Voir les callbacks</option>
+            <option value="config">Configuration globale</option>
+          </select>
+          <div class="stack-sm">
+            <button id="advancedButton" class="btn btn-secondary full-width" type="button">Open</button>
+            <button id="swaggerButton" class="btn btn-ghost full-width" type="button">Documentation API (Swagger)</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="sidebar-bottom">
+        <span class="sidebar-bottom-status"><span class="status-dot online"></span> Authenticated API</span>
+        <span>Textual web</span>
+      </div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button id="openSidebar" class="icon-button menu-button" type="button" aria-label="Open navigation">☰</button>
+          <div>
+            <div class="breadcrumb">Console ADCS</div>
+            <div class="breadcrumb-current" id="breadcrumbCA">Certificates</div>
+          </div>
+        </div>
+        <div class="topbar-right">
+          <span id="apiStatus" class="api-status"><span class="status-dot online"></span> Connected</span>
+          <button id="helpButton" class="icon-button" type="button" title="Keyboard shortcuts" aria-label="Help">?</button>
+          <button id="themeButton" class="icon-button" type="button" title="Change theme" aria-label="Change theme">◐</button>
+          <span class="topbar-divider"></span>
+          <span id="userLabel" class="user-label">admin</span>
+          <button id="logoutButton" class="icon-button" type="button" title="Sign out" aria-label="Sign out">⇥</button>
+        </div>
+      </header>
+
+      <div class="workspace-scroll">
+        <div class="page-title-row">
+          <div>
+
+            <h1>Certificates</h1>
+            <p id="pageSubtitle" class="muted">Select a certificate authority to begin.</p>
+          </div>
+          <button id="reloadButton" class="btn btn-secondary" type="button">Refresh</button>
+        </div>
+
+        <div class="stats-grid" role="status" aria-live="polite">
+          <div class="stat-tile"><small>Results</small><strong id="statTotal">—</strong></div>
+          <div class="stat-tile"><small>Not revoked</small><strong id="statActive">—</strong></div>
+          <div class="stat-tile"><small>Revoked</small><strong id="statRevoked">—</strong></div>
+          <div class="stat-tile"><small>Selected</small><strong id="statSelected">0</strong></div>
+        </div>
+
+        <div class="split-area" id="splitArea"><section class="panel table-panel" aria-label="Certificate list">
+          <div class="panel-header">
+            <div>
+              <h2>Certificate list</h2>
+              <span id="tableDescription" class="muted tiny">Issued certificate inventory</span>
+            </div>
+            <div class="table-actions">
+              <button id="selectAllButton" class="btn btn-compact btn-secondary" type="button">Select all</button>
+              <button id="clearSelectionButton" class="btn btn-compact btn-ghost" type="button">Clear</button>
+              <button hidden id="filterActionButton" class="btn btn-compact btn-ghost" type="button" title="Run an action on every certificate matching the filter">Filter action</button>
+            </div>
+          </div>
+          <div id="selectionBar" class="selection-bar" hidden>
+            <span><strong id="selectionCount">0</strong> certificate(s) selected</span>
+            <span class="muted tiny">Actions apply to the full selection.</span>
+          </div>
+          <div class="table-scroll" id="tableScroll">
+            <table class="cert-table">
+              <thead>
+                <tr>
+                  <th scope="col" class="cell-checkbox"><input id="headCheck" type="checkbox" aria-label="Select visible certificates"></th>
+                  <th scope="col"><button class="sort-header" data-sort="serial" type="button">Serial number <span class="sort-glyph">↕</span></button></th>
+                  <th scope="col"><button class="sort-header" data-sort="subject" type="button">Subject <span class="sort-glyph">↕</span></button></th>
+                  <th scope="col"><button class="sort-header" data-sort="not_before" type="button">Valid from <span class="sort-glyph">↕</span></button></th>
+                  <th scope="col"><button class="sort-header" data-sort="not_after" type="button">Expiration <span class="sort-glyph">↕</span></button></th>
+                  <th scope="col"><button class="sort-header" data-sort="days_to_expiry" type="button">Days <span class="sort-glyph">↕</span></button></th>
+                  <th scope="col"><button class="sort-header" data-sort="revoked" type="button">Status <span class="sort-glyph">↕</span></button></th>
+                  <th scope="col">Type</th>
+                  <th scope="col">File</th>
+                </tr>
+              </thead>
+              <tbody id="certTableBody"><tr><td colspan="9" class="table-empty">Connectez-vous pour voir les certificats.</td></tr></tbody>
+            </table>
+          </div>
+          <div class="table-footer">
+            <span id="tableCount">0 certificates</span>
+            <span id="tableHint">Click a row for details · select checkboxes for batch actions</span>
+          </div>
+        </section>
+
+        <div class="splitter" id="detailSplitter" role="separator" aria-label="Resize details" aria-orientation="horizontal" tabindex="0" title="Drag to resize details"><span></span></div>
+        <section class="panel detail-panel" aria-labelledby="detailHeading">
+          <div class="panel-header detail-title-row">
+            <div>
+              <h2 id="detailHeading">Certificate details</h2>
+              <span class="muted tiny" id="detailSubtitle">Select a certificate row</span>
+            </div>
+            <div class="detail-heading-actions">
+              <button id="viewPemButton" class="btn btn-compact btn-ghost" type="button" hidden>View PEM</button>
+              <button id="downloadPemButton" class="btn btn-compact btn-secondary" type="button" hidden>↓ Download PEM</button>
+              <button id="downloadDerButton" class="btn btn-compact btn-secondary" type="button" hidden>↓ DER</button>
+              <button id="downloadChainButton" class="btn btn-compact btn-secondary" type="button" hidden>↓ PEM chain</button>
+
+            </div>
+          </div>
+          <div id="detailContent" class="detail-content">
+            <div class="detail-placeholder">
+              <strong>No certificate selected</strong>
+              <span>Metadata and extensions will appear here.</span>
+            </div>
+          </div>
+        </section></div>
+
+        <footer class="workspace-footer"><span>ADCS Console</span><span>Enter: details · Space: select · R: revoke · F5: refresh</span></footer>
+      </div>
+    </div>
+    <div id="mobileScrim" class="mobile-scrim" hidden></div>
+  </div>
+
+  <dialog id="dialog" class="app-dialog" aria-labelledby="dialogTitle">
+    <div class="dialog-head">
+      <div>
+        <p class="eyebrow">ACTION</p>
+        <h2 id="dialogTitle">Action</h2>
+      </div>
+      <button id="dialogClose" type="button" class="icon-button" aria-label="Close">✕</button>
+    </div>
+    <p id="dialogDescription" class="dialog-description muted"></p>
+    <form id="dialogForm" method="dialog" novalidate>
+      <div id="dialogFields" class="dialog-fields"></div>
+      <p id="dialogError" class="form-error" role="alert" hidden></p>
+      <div class="dialog-footer">
+        <button id="dialogCancel" type="button" class="btn btn-secondary">Cancel</button>
+        <button id="dialogSubmit" type="submit" class="btn btn-primary">Confirm</button>
+      </div>
+    </form>
+  </dialog>
+  <div id="toastArea" class="toast-area" role="status" aria-live="polite"></div>
+</body>
+</html>

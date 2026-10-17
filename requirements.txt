@@ -1,0 +1,3 @@
+# Install ADCS and its requirements independently.
+Flask>=2.2,<4
+waitress>=2,<4
