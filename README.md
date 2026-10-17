@@ -4,6 +4,9 @@ A proof of concept (POC) providing a web interface and JSON API for [adcs_python
 
 The project uses the existing `adcs_python` code without modifying it.
 
+
+![Demo](demo.png "DEMO")
+
 ## Quick Start
 
 Requires an existing `adcs_python` installation.
